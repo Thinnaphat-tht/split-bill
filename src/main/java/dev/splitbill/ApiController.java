@@ -67,17 +67,21 @@ public class ApiController {
                 log.warn("OCR failed: {}", e.toString());
             }
         }
+        String reason = "อ่านใบเสร็จไม่สำเร็จ ลองถ่ายใหม่ให้ชัดขึ้น หรือเพิ่มรายการเอง";
         if (gemini.hasKey()) {
             try {
                 Receipt r = gemini.read(bytes, type);
                 if (fromOcr != null && !fromOcr.items().isEmpty() && r.items().isEmpty()) return fromOcr;
                 return fromOcr == null ? r : r.withSource("ocr+gemini");
+            } catch (IllegalStateException e) {
+                log.warn("Gemini failed: {}", e.getMessage());
+                reason = e.getMessage();   // e.g. "AI is busy", worth showing to the user
             } catch (Exception e) {
                 log.warn("Gemini failed: {}", e.toString());
             }
         }
         if (fromOcr != null) return fromOcr;
-        throw new IllegalStateException("อ่านใบเสร็จไม่สำเร็จ ลองถ่ายใหม่ให้ชัดขึ้น หรือเพิ่มรายการเอง");
+        throw new IllegalStateException(reason);
     }
 
     @PostMapping("/split")

@@ -33,15 +33,19 @@ public class ReceiptReader {
             - If it is not a receipt, return {"items":[],"serviceCharge":0,"vat":0,"discount":0,"total":0}.
             """;
 
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     private final ObjectMapper json = JsonMapper.builder().build();
     private final String apiKey;
     private final String model;
 
+    private final String fallbackModels;
+
     public ReceiptReader(@Value("${gemini.api-key:}") String apiKey,
-                         @Value("${gemini.model:gemini-4-hydrogen}") String model) {
+                         @Value("${gemini.model:gemini-4-hydrogen}") String model,
+                         @Value("${gemini.fallback-models:gemini-3-flash-preview,gemini-3.1-flash-lite,gemini-flash-latest}") String fallbackModels) {
         this.apiKey = apiKey;
         this.model = model;
+        this.fallbackModels = fallbackModels;
     }
 
     public boolean hasKey() {
@@ -61,28 +65,27 @@ public class ReceiptReader {
 
         String payload = json.writeValueAsString(body);
         int lastStatus = 0;
-        // busy models answer 429/503; retry once, then fall back to the next model
-        for (String m : List.of(model, FALLBACK_MODEL)) {
-            for (int attempt = 0; attempt < 2; attempt++) {
+        // busy models answer 429/503 or hang; move straight on to the next model
+        List<String> models = new java.util.ArrayList<>(List.of(model));
+        for (String m : fallbackModels.split(",")) if (!m.isBlank() && !models.contains(m.strip())) models.add(m.strip());
+        for (String m : models) {
+            try {
                 HttpResponse<String> res = http.send(request(m, payload), HttpResponse.BodyHandlers.ofString());
                 lastStatus = res.statusCode();
                 if (lastStatus == 200) return parse(res.body());
-                if (lastStatus != 429 && lastStatus != 503) break;
-                Thread.sleep(1500);
+            } catch (java.net.http.HttpTimeoutException e) {
+                lastStatus = 504;
             }
-            if (m.equals(FALLBACK_MODEL)) break;
         }
-        throw new IOException("Gemini ตอบกลับ " + lastStatus);
+        throw new IllegalStateException("AI ไม่ว่างตอนนี้ (" + lastStatus + ") ลองกดใหม่อีกครั้ง หรือแก้รายการเอง");
     }
-
-    private static final String FALLBACK_MODEL = "gemini-flash-latest";
 
     private HttpRequest request(String m, String payload) {
         return HttpRequest.newBuilder()
                 .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent"))
                 .header("Content-Type", "application/json")
                 .header("x-goog-api-key", apiKey)
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(30))
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build();
     }
