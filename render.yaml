@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: split-bill
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false   # set it in the Render dashboard, never commit it
