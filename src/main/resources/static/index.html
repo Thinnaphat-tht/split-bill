@@ -211,13 +211,24 @@ async function readWithAi(blob){
 }
 
 let lastPhoto = null;
+function showRetry(text){ $('#aiRetry').textContent = text; $('#aiRetry').classList.remove('hidden'); }
+function scanFailed(err){
+  $('#scanMsg').textContent = err.message || 'อ่านไม่สำเร็จ';
+  if(lastPhoto) showRetry('ลองให้ AI อ่านอีกครั้ง');
+}
+function clearReceipt(){
+  state.items = []; $('#extra').value = '0.00'; $('#receiptTotal').textContent = '';
+  $('#aiRetry').classList.add('hidden'); renderItems();
+}
 $('#aiRetry').onclick = async () => {
   if(!lastPhoto) return;
-  try{ showReceipt(await readWithAi(lastPhoto)); }catch(err){ $('#scanMsg').textContent = err.message || 'อ่านไม่สำเร็จ'; }
+  $('#aiRetry').classList.add('hidden');
+  try{ showReceipt(await readWithAi(lastPhoto)); }catch(err){ scanFailed(err); }
 };
 
 const onPhoto = async e => {
   const f = e.target.files[0]; if(!f) return;
+  clearReceipt();   // never leave the previous receipt on screen while this one is read
   $('#scanMsg').textContent = 'กำลังเตรียมรูป...';
   try{
     lastPhoto = await shrink(f);
@@ -232,7 +243,7 @@ const onPhoto = async e => {
       catch(err){ if(!j?.items.length) throw err; }   // keep the phone result if AI is down
     }
     showReceipt(j);
-  }catch(err){ $('#scanMsg').textContent = err.message || 'อ่านไม่สำเร็จ'; }
+  }catch(err){ scanFailed(err); }
   e.target.value='';
 };
 $('#camera').onchange = onPhoto;
@@ -247,7 +258,7 @@ function showReceipt(j){
     $('#receiptTotal').textContent = (j.total ? `ยอดในใบเสร็จ ${baht(toSatang(j.total))} บาท` + (j.balanced ? ' ตรงกับรายการ ✓' : ' — ยังไม่ตรง ให้แก้รายการที่อ่านผิด') : 'ไม่เจอยอดรวมในใบเสร็จ เช็กรายการอีกครั้ง') + (by ? ` · ${by}` : '');
     $('#scanMsg').textContent = '';
     // phone OCR gets prices right but often garbles Thai names; offer an AI re-read
-    $('#aiRetry').classList.toggle('hidden', j.source !== 'ocr');
+    if(j.source === 'ocr') showRetry('ชื่อเมนูเพี้ยน? ให้ AI อ่านใหม่'); else $('#aiRetry').classList.add('hidden');
     renderItems();
 }
 
