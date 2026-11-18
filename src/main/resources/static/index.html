@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หารบิล</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--text:#14213d;--muted:#5b6b84;--line:#dbe3ee;--accent:#1d6fe0;--accent-ink:#fff;--chip:#e8f0fc;--warn:#b42318}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1522;--card:#172133;--text:#e6edf7;--muted:#9aabc4;--line:#2a3850;--accent:#5b9bff;--accent-ink:#0b1424;--chip:#1f2f4a;--warn:#ff8a7a}}
+:root[data-theme="dark"]{--bg:#0e1522;--card:#172133;--text:#e6edf7;--muted:#9aabc4;--line:#2a3850;--accent:#5b9bff;--accent-ink:#0b1424;--chip:#1f2f4a;--warn:#ff8a7a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:16px;line-height:1.5}
+main{max-width:560px;margin:0 auto;padding:16px 16px 80px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+h1{font-size:1.5rem;margin:0}
+h2{font-size:1.05rem;margin:0 0 10px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.muted{color:var(--muted);font-size:.9rem}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:8px 14px;cursor:pointer;min-height:40px}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0}
+input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;gap:8px;align-items:center}
+.item{border-top:1px solid var(--line);padding:10px 0}
+.item:first-child{border-top:0}
+.item .row input.name{flex:1}
+.item .row input.price{width:90px;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border-radius:999px;padding:4px 12px;min-height:34px;background:var(--chip);border-color:transparent}
+.chip.on{background:var(--accent);color:var(--accent-ink)}
+.del{border:0;background:none;color:var(--muted);padding:4px 8px;min-height:auto}
+.sum{display:flex;justify-content:space-between;font-weight:600;margin-top:8px}
+.err{color:var(--warn);font-size:.9rem;min-height:1.2em;margin:6px 0 0}
+.person{border-top:1px solid var(--line);padding:12px 0}
+.person:first-child{border-top:0}
+.person .total{font-size:1.3rem;font-weight:700}
+.qr{background:#fff;padding:8px;border-radius:8px;display:inline-block;margin-top:8px}
+.hidden{display:none}
+label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(--line);border-radius:12px;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>หารบิล</h1>
+  <button id="theme" aria-label="สลับธีม">🌙</button>
+</header>
+
+<section>
+  <h2>1. ถ่ายรูปใบเสร็จ</h2>
+  <label class="upload"><input id="photo" type="file" accept="image/*" capture="environment" class="hidden">📷 แตะเพื่อถ่ายหรือเลือกรูป</label>
+  <p class="err" id="scanMsg"></p>
+</section>
+
+<section>
+  <h2>2. เพื่อนที่ไปกินด้วย</h2>
+  <div class="row"><input id="newPerson" placeholder="ชื่อเพื่อน" style="flex:1"><button id="addPerson">เพิ่ม</button></div>
+  <div class="chips" id="people"></div>
+</section>
+
+<section>
+  <h2>3. รายการ <span class="muted">(แตะชื่อคนที่กินจานนั้น)</span></h2>
+  <div id="items"></div>
+  <button id="addItem">+ เพิ่มรายการเอง</button>
+  <div class="row" style="margin-top:12px"><span style="flex:1">ค่าบริการ + VAT − ส่วนลด</span><input id="extra" class="price" type="number" step="0.01" value="0" style="width:100px;text-align:right"></div>
+  <div class="sum"><span>ยอดรวม</span><span id="grand">0.00</span></div>
+  <p class="muted" id="receiptTotal"></p>
+</section>
+
+<section>
+  <h2>4. คนจ่ายและพร้อมเพย์</h2>
+  <div class="row"><input id="ppId" inputmode="numeric" placeholder="เบอร์พร้อมเพย์ หรือเลขบัตร" style="flex:1"></div>
+  <p class="muted">คนจ่ายต้องอยู่ในรายชื่อเพื่อนด้วย จะไม่สร้าง QR ให้ตัวเอง</p>
+  <div class="row"><span>คนจ่ายคือ</span><select id="payer" class="btn" style="flex:1"></select></div>
+  <button class="primary" id="calc" style="width:100%;margin-top:12px">คิดเงิน</button>
+  <p class="err" id="calcMsg"></p>
+</section>
+
+<section id="resultBox" class="hidden">
+  <h2>ต้องโอนคืน</h2>
+  <div id="result"></div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = { get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}} };
+const state = { people: [], items: [] };
+const baht = n => (n/100).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const toSatang = v => Math.round((parseFloat(v)||0)*100);
+
+// theme
+function applyTheme(t){ if(t) document.documentElement.dataset.theme=t; const dark = t ? t==='dark' : matchMedia('(prefers-color-scheme: dark)').matches; $('#theme').textContent = dark ? '☀️' : '🌙'; }
+applyTheme(store.get('theme'));
+$('#theme').onclick = () => { const dark = $('#theme').textContent==='☀️'; const t = dark?'light':'dark'; store.set('theme',t); applyTheme(t); };
+
+$('#ppId').value = store.get('ppId') || '';
+$('#ppId').oninput = e => store.set('ppId', e.target.value);
+
+function renderPeople(){
+  $('#people').innerHTML = '';
+  state.people.forEach((p,i)=>{
+    const b = document.createElement('button'); b.className='chip'; b.textContent = p+' ✕';
+    b.onclick = () => { state.people.splice(i,1); state.items.forEach(it=>it.eaters=it.eaters.filter(e=>e!==i).map(e=>e>i?e-1:e)); renderAll(); };
+    $('#people').append(b);
+  });
+  const sel = $('#payer'), cur = sel.value; sel.innerHTML='';
+  state.people.forEach((p,i)=>sel.add(new Option(p,i)));
+  if(cur && cur < state.people.length) sel.value = cur;
+}
+
+function renderItems(){
+  const box = $('#items'); box.innerHTML='';
+  state.items.forEach((it,idx)=>{
+    const d = document.createElement('div'); d.className='item';
+    d.innerHTML = `<div class="row"><input class="name" value=""><input class="price" type="number" step="0.01"><button class="del" aria-label="ลบ">✕</button></div><div class="chips"></div>`;
+    const [name, price] = d.querySelectorAll('input');
+    name.value = it.name; price.value = (it.price/100).toFixed(2);
+    name.oninput = e => it.name = e.target.value;
+    price.oninput = e => { it.price = toSatang(e.target.value); renderTotal(); };
+    d.querySelector('.del').onclick = () => { state.items.splice(idx,1); renderAll(); };
+    const chips = d.querySelector('.chips');
+    state.people.forEach((p,i)=>{
+      const c = document.createElement('button'); c.className = 'chip'+(it.eaters.includes(i)?' on':''); c.textContent = p;
+      c.onclick = () => { it.eaters = it.eaters.includes(i) ? it.eaters.filter(e=>e!==i) : [...it.eaters,i]; c.classList.toggle('on'); };
+      chips.append(c);
+    });
+    if(!state.people.length) chips.innerHTML = '<span class="muted">เพิ่มชื่อเพื่อนก่อน</span>';
+    box.append(d);
+  });
+  renderTotal();
+}
+
+function renderTotal(){
+  const sum = state.items.reduce((s,it)=>s+it.price,0) + toSatang($('#extra').value);
+  $('#grand').textContent = baht(sum);
+}
+function renderAll(){ renderPeople(); renderItems(); }
+
+$('#addPerson').onclick = () => { const n = $('#newPerson').value.trim(); if(!n) return; state.people.push(n); $('#newPerson').value=''; renderAll(); $('#newPerson').focus(); };
+$('#newPerson').onkeydown = e => { if(e.key==='Enter') $('#addPerson').click(); };
+$('#addItem').onclick = () => { state.items.push({name:'',price:0,eaters:[]}); renderItems(); };
+$('#extra').oninput = renderTotal;
+
+$('#photo').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  $('#scanMsg').textContent = 'กำลังอ่านใบเสร็จ...';
+  const fd = new FormData(); fd.append('image', f);
+  try{
+    const r = await fetch('/api/scan',{method:'POST',body:fd}); const j = await r.json();
+    if(!r.ok) throw new Error(j.error);
+    if(!j.items?.length){ $('#scanMsg').textContent = 'ไม่เจอรายการในรูป ลองถ่ายใหม่หรือเพิ่มเอง'; return; }
+    state.items = j.items.map(x=>({name: (x.qty>1? x.qty+'x ':'')+x.name, price: toSatang(x.price), eaters:[]}));
+    const extra = (j.serviceCharge||0)+(j.vat||0)-(j.discount||0);
+    $('#extra').value = extra.toFixed(2);
+    const by = {ocr:'อ่านในเครื่องด้วย Tesseract', gemini:'อ่านด้วย Gemini', 'ocr+gemini':'Tesseract อ่านไม่ครบ จึงให้ Gemini ช่วย'}[j.source] || '';
+    $('#receiptTotal').textContent = (j.total ? `ยอดในใบเสร็จ ${baht(toSatang(j.total))} บาท` + (j.balanced ? ' ตรงกับรายการ ✓' : ' — ยังไม่ตรง ให้แก้รายการที่อ่านผิด') : 'ไม่เจอยอดรวมในใบเสร็จ เช็กรายการอีกครั้ง') + (by ? ` · ${by}` : '');
+    $('#scanMsg').textContent = '';
+    renderItems();
+  }catch(err){ $('#scanMsg').textContent = err.message || 'อ่านไม่สำเร็จ'; }
+  e.target.value='';
+};
+
+$('#calc').onclick = async () => {
+  $('#calcMsg').textContent='';
+  const body = { people: state.people, items: state.items.map(it=>({name:it.name||'(ไม่มีชื่อ)',price:it.price,eaters:it.eaters})), extra: toSatang($('#extra').value) };
+  try{
+    const r = await fetch('/api/split',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j = await r.json(); if(!r.ok) throw new Error(j.error);
+    const payer = +$('#payer').value, ppId = $('#ppId').value.trim();
+    const box = $('#result'); box.innerHTML='';
+    for(const [i,p] of j.entries()){
+      const d = document.createElement('div'); d.className='person';
+      const lines = p.shares.map(s=>`${s.item} ${baht(s.amount)}`).join(' · ');
+      d.innerHTML = `<div class="row" style="justify-content:space-between"><b></b><span class="total">${baht(p.total)}</span></div><div class="muted"></div><div class="muted">ค่าบริการ/VAT ${baht(p.extra)}</div>`;
+      d.querySelector('b').textContent = p.name + (i===payer?' (คนจ่าย)':'');
+      d.querySelector('.muted').textContent = lines;
+      if(i!==payer && ppId && p.total>0){
+        const q = await fetch(`/api/promptpay?id=${encodeURIComponent(ppId)}&satang=${p.total}`); const qj = await q.json();
+        if(q.ok){ const qd = document.createElement('div'); qd.className='qr'; d.append(qd); new QRCode(qd,{text:qj.payload,width:160,height:160}); }
+        else $('#calcMsg').textContent = qj.error;
+      }
+      box.append(d);
+    }
+    $('#resultBox').classList.remove('hidden'); $('#resultBox').scrollIntoView({behavior:'smooth'});
+  }catch(err){ $('#calcMsg').textContent = err.message; }
+};
+renderAll();
+</script>
+</body>
+</html>
