@@ -46,7 +46,8 @@ function toItem(label, price) {
   if ((m = label.match(QTY_AT_START))) { qty = +m[1]; name = m[2]; }
   else if ((m = label.match(QTY_AFTER))) { name = m[1]; qty = +m[2]; }
   // drop stray unit-price columns before the line total
-  name = name.replace(/\s+\d+[.,]\d{2}$/, '').replace(/[|_*]+/g, '').trim();
+  name = name.replace(/\s+\d+[.,]\d{2}$/, '').replace(/[|_*]+/g, '').trim()
+    .replace(/^[^\p{L}\p{N}]+/u, '');   // OCR noise before the name, e.g. "%แซนวิช"
   return { name, qty: Math.max(qty, 1), price: round(price) };
 }
 

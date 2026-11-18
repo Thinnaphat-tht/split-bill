@@ -122,6 +122,12 @@ class ReceiptParserTest {
     }
 
     @Test
+    void dropsOcrNoiseBeforeItemNames() {
+        Receipt r = ReceiptParser.parse("%แชนวิชคริวชองค์หมูห              32.00\nTOTAL 32.00");
+        assertEquals("แชนวิชคริวชองค์หมูห", r.items().get(0).name());
+    }
+
+    @Test
     void numberFormats() {
         assertEquals(1250.0, ReceiptParser.toNumber("1,250.00"));
         assertEquals(1250.5, ReceiptParser.toNumber("1.250,50"));

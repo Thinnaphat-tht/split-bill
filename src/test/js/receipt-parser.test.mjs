@@ -70,6 +70,11 @@ TID#261111422132139`);
   assert.ok(r.balanced);
 });
 
+test('drops OCR noise before item names', () => {
+  const r = parseReceipt('%แชนวิชคริวชองค์หมูห              32.00\nTOTAL 32.00');
+  assert.equal(r.items[0].name, 'แชนวิชคริวชองค์หมูห');
+});
+
 test('number formats', () => {
   assert.equal(toNumber('1,250.00'), 1250);
   assert.equal(toNumber('1.250,50'), 1250.5);

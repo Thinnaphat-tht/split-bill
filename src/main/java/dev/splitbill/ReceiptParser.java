@@ -89,7 +89,8 @@ public final class ReceiptParser {
             }
         }
         // drop stray unit-price columns, e.g. "ชาเย็น 45.00" before the line total
-        name = name.replaceAll("\\s+\\d+[.,]\\d{2}$", "").replaceAll("[|_*]+", "").strip();
+        name = name.replaceAll("\\s+\\d+[.,]\\d{2}$", "").replaceAll("[|_*]+", "").strip()
+                .replaceAll("^[^\\p{L}\\p{N}]+", "");   // OCR noise before the name, e.g. "%แซนวิช"
         return new Receipt.Line(name, Math.max(qty, 1), round(price));
     }
 
