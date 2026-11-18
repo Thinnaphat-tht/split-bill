@@ -40,6 +40,7 @@ input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:
 .person .total{font-size:1.3rem;font-weight:700}
 .qr{background:#fff;padding:8px;border-radius:8px;display:inline-block;margin-top:8px}
 .hidden{display:none}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(--line);border-radius:12px;cursor:pointer}
 </style>
 </head>
@@ -51,8 +52,12 @@ label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(
 </header>
 
 <section>
-  <h2>1. ถ่ายรูปใบเสร็จ</h2>
-  <label class="upload"><input id="photo" type="file" accept="image/*" capture="environment" class="hidden">📷 แตะเพื่อถ่ายหรือเลือกรูป</label>
+  <h2>1. รูปใบเสร็จ</h2>
+  <!-- "capture" forces the camera on phones, so the gallery needs its own input without it -->
+  <div class="pick">
+    <label class="upload"><input id="camera" type="file" accept="image/*" capture="environment" class="hidden">📷 ถ่ายรูป</label>
+    <label class="upload"><input id="gallery" type="file" accept="image/*" class="hidden">🖼️ เลือกจากคลัง</label>
+  </div>
   <p class="err" id="scanMsg"></p>
 </section>
 
@@ -186,7 +191,7 @@ $('#aiRetry').onclick = async () => {
   try{ showReceipt(await readWithAi(lastPhoto)); }catch(err){ $('#scanMsg').textContent = err.message || 'อ่านไม่สำเร็จ'; }
 };
 
-$('#photo').onchange = async e => {
+const onPhoto = async e => {
   const f = e.target.files[0]; if(!f) return;
   $('#scanMsg').textContent = 'กำลังเตรียมรูป...';
   try{
@@ -201,6 +206,8 @@ $('#photo').onchange = async e => {
   }catch(err){ $('#scanMsg').textContent = err.message || 'อ่านไม่สำเร็จ'; }
   e.target.value='';
 };
+$('#camera').onchange = onPhoto;
+$('#gallery').onchange = onPhoto;
 
 function showReceipt(j){
     if(!j.items?.length){ $('#scanMsg').textContent = 'ไม่เจอรายการในรูป ลองถ่ายใหม่หรือเพิ่มเอง'; return; }
