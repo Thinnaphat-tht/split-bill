@@ -37,7 +37,9 @@ public class ApiController {
      * to the printed total do we ask Gemini. If Gemini fails, the OCR result is still returned.
      */
     @PostMapping("/scan")
-    public Receipt scan(@RequestParam("image") MultipartFile image) throws Exception {
+    public Receipt scan(@RequestParam("image") MultipartFile image,
+                        // the web page already ran OCR on the phone and only needs Gemini
+                        @RequestParam(defaultValue = "false") boolean aiOnly) throws Exception {
         String type = image.getContentType();
         if (type == null || !type.startsWith("image/")) {
             throw new IllegalArgumentException("ไฟล์ต้องเป็นรูปภาพ");
@@ -45,7 +47,7 @@ public class ApiController {
         byte[] bytes = image.getBytes();
 
         Receipt fromOcr = null;
-        if (ocr.available()) {
+        if (!aiOnly && ocr.available()) {
             // on a slow server Tesseract can take minutes; give up and let Gemini read it instead
             CompletableFuture<String> job = CompletableFuture.supplyAsync(() -> {
                 try {
