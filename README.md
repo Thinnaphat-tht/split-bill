@@ -1,6 +1,6 @@
 # Split Bill
 
-Snap a photo of a restaurant receipt, tap who ate what, and get how much each friend owes, with a PromptPay QR code for each person.
+Snap a photo of a restaurant receipt, tap who ate what, and get how much each friend owes the person who paid.
 
 Built for the usual situation in Thailand: one friend pays for the whole table, then has to work out and chase everyone's share by hand.
 
@@ -12,7 +12,7 @@ Built for the usual situation in Thailand: one friend pays for the whole table, 
 2. **AI only when needed.** If the parsed items do not add up to the printed total, the photo goes to the server, which asks Gemini to read it. When OCR gets the prices right but garbles Thai names, a button lets the user ask AI to re-read.
 3. **Check the list.** Every item and price can be edited, and the page shows whether the list matches the receipt total.
 4. **Who ate what.** Add friends, then tap names under each item. Shared dishes are split evenly between the people tapped.
-5. **Pay back.** Service charge, VAT and discounts are shared in proportion to what each person ate. Each person gets their total and a PromptPay QR code for that exact amount.
+5. **Pay back.** Service charge, VAT and discounts are shared in proportion to what each person ate. Each person sees their total and what it is made of.
 
 All money is handled in satang (integers) with the largest-remainder method, so the shares always add up to the bill exactly.
 

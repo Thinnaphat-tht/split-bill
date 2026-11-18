@@ -6,7 +6,6 @@
 <title>หารบิล</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--text:#14213d;--muted:#5b6b84;--line:#dbe3ee;--accent:#1d6fe0;--accent-ink:#fff;--chip:#e8f0fc;--warn:#b42318}
@@ -38,7 +37,6 @@ input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:
 .person{border-top:1px solid var(--line);padding:12px 0}
 .person:first-child{border-top:0}
 .person .total{font-size:1.3rem;font-weight:700}
-.qr{background:#fff;padding:8px;border-radius:8px;display:inline-block;margin-top:8px}
 .hidden{display:none}
 .pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(--line);border-radius:12px;cursor:pointer}
@@ -78,9 +76,8 @@ label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(
 </section>
 
 <section>
-  <h2>4. คนจ่ายและพร้อมเพย์</h2>
-  <div class="row"><input id="ppId" inputmode="numeric" placeholder="เบอร์พร้อมเพย์ หรือเลขบัตร" style="flex:1"></div>
-  <p class="muted">คนจ่ายต้องอยู่ในรายชื่อเพื่อนด้วย จะไม่สร้าง QR ให้ตัวเอง</p>
+  <h2>4. ใครจ่ายไปก่อน</h2>
+  <p class="muted">คนจ่ายต้องอยู่ในรายชื่อเพื่อนด้วย</p>
   <div class="row"><span>คนจ่ายคือ</span><select id="payer" class="btn" style="flex:1"></select></div>
   <button class="primary" id="calc" style="width:100%;margin-top:12px">คิดเงิน</button>
   <p class="err" id="calcMsg"></p>
@@ -104,9 +101,6 @@ const toSatang = v => Math.round((parseFloat(v)||0)*100);
 function applyTheme(t){ if(t) document.documentElement.dataset.theme=t; const dark = t ? t==='dark' : matchMedia('(prefers-color-scheme: dark)').matches; $('#theme').textContent = dark ? '☀️' : '🌙'; }
 applyTheme(store.get('theme'));
 $('#theme').onclick = () => { const dark = $('#theme').textContent==='☀️'; const t = dark?'light':'dark'; store.set('theme',t); applyTheme(t); };
-
-$('#ppId').value = store.get('ppId') || '';
-$('#ppId').oninput = e => store.set('ppId', e.target.value);
 
 function renderPeople(){
   $('#people').innerHTML = '';
@@ -260,19 +254,14 @@ $('#calc').onclick = async () => {
   try{
     const r = await fetch('/api/split',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j = await r.json(); if(!r.ok) throw new Error(j.error);
-    const payer = +$('#payer').value, ppId = $('#ppId').value.trim();
+    const payer = +$('#payer').value;
     const box = $('#result'); box.innerHTML='';
     for(const [i,p] of j.entries()){
       const d = document.createElement('div'); d.className='person';
       const lines = p.shares.map(s=>`${s.item} ${baht(s.amount)}`).join(' · ');
       d.innerHTML = `<div class="row" style="justify-content:space-between"><b></b><span class="total">${baht(p.total)}</span></div><div class="muted"></div><div class="muted">ค่าบริการ/VAT ${baht(p.extra)}</div>`;
-      d.querySelector('b').textContent = p.name + (i===payer?' (คนจ่าย)':'');
+      d.querySelector('b').textContent = i===payer ? p.name+' (จ่ายไปแล้ว)' : `${p.name} โอนให้ ${j[payer]?.name ?? 'คนจ่าย'}`;
       d.querySelector('.muted').textContent = lines;
-      if(i!==payer && ppId && p.total>0){
-        const q = await fetch(`/api/promptpay?id=${encodeURIComponent(ppId)}&satang=${p.total}`); const qj = await q.json();
-        if(q.ok){ const qd = document.createElement('div'); qd.className='qr'; d.append(qd); new QRCode(qd,{text:qj.payload,width:160,height:160}); }
-        else $('#calcMsg').textContent = qj.error;
-      }
       box.append(d);
     }
     $('#resultBox').classList.remove('hidden'); $('#resultBox').scrollIntoView({behavior:'smooth'});
