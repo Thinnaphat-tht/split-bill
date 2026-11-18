@@ -165,15 +165,46 @@ async function shrink(file){
 
 // Tesseract.js runs on the phone's own CPU, so the free server never has to do OCR
 let worker = null;
-async function readOnPhone(blob){
-  if(!worker){
-    worker = await Tesseract.createWorker(['tha','eng'], 1, { logger: m => {
-      if(m.status === 'recognizing text') $('#scanMsg').textContent = `กำลังอ่านในเครื่อง ${Math.round(m.progress*100)}%`;
-      else if(m.status.includes('load')) $('#scanMsg').textContent = 'กำลังโหลดตัวอ่านภาษาไทย (ครั้งแรกเท่านั้น)...';
-    }});
-    await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
+// some in-app browsers (e.g. iOS web views) never finish loading the OCR worker and give no
+// error, so phone OCR gets a deadline; after one failure it is skipped for this visit
+let phoneOcrBroken = false;
+const PHONE_OCR_TIMEOUT_MS = 30000;
+async function readOnPhoneWithDeadline(blob){
+  if(phoneOcrBroken || typeof Tesseract === 'undefined') return null;
+  let timer;
+  const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('phone OCR timeout')), PHONE_OCR_TIMEOUT_MS); });
+  try { return await Promise.race([readOnPhone(blob), deadline]); }
+  catch(err){
+    console.warn('OCR on phone failed', err);
+    phoneOcrBroken = true;
+    if(worker){ worker.terminate().catch(() => {}); worker = null; }
+    workerReady = null;
+    return null;
   }
-  const { data } = await worker.recognize(blob);
+  finally { clearTimeout(timer); }
+}
+let scanning = false;   // progress messages only show while a photo is being read
+let workerReady = null;
+function getWorker(){
+  workerReady ??= (async () => {
+    const w = await Tesseract.createWorker(['tha','eng'], 1, { logger: m => {
+      if(!scanning) return;
+      if(m.status === 'recognizing text') $('#scanMsg').textContent = `กำลังอ่านในเครื่อง ${Math.round(m.progress*100)}%`;
+    }});
+    await w.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
+    worker = w;
+    return w;
+  })();
+  return workerReady;
+}
+// start downloading the OCR data as soon as the page opens, so it is ready by the time a photo is picked
+if(typeof Tesseract !== 'undefined') getWorker().catch(err => { console.warn('OCR preload failed', err); phoneOcrBroken = true; });
+
+async function readOnPhone(blob){
+  if(!worker) $('#scanMsg').textContent = 'กำลังโหลดตัวอ่านในเครื่อง (ครั้งแรกเท่านั้น)...';
+  const w = await getWorker();
+  $('#scanMsg').textContent = 'กำลังอ่านในเครื่อง...';
+  const { data } = await w.recognize(blob);
   return parseReceipt(data.text);
 }
 
@@ -197,7 +228,8 @@ const onPhoto = async e => {
   try{
     lastPhoto = await shrink(f);
     let j = null;
-    try{ j = await readOnPhone(lastPhoto); }catch(err){ console.warn('OCR on phone failed', err); }
+    scanning = true;
+    try{ j = await readOnPhoneWithDeadline(lastPhoto); } finally { scanning = false; }
     if(!j || !j.balanced){
       try{ j = await readWithAi(lastPhoto); }
       catch(err){ if(!j?.items.length) throw err; }   // keep the phone result if AI is down
