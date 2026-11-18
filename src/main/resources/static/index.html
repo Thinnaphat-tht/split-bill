@@ -222,8 +222,11 @@ const onPhoto = async e => {
   try{
     lastPhoto = await shrink(f);
     let j = null;
-    scanning = true;
-    try{ j = await readOnPhoneWithDeadline(lastPhoto); } finally { scanning = false; }
+    // phone OCR only copes with screenshots (saved as PNG); camera photos of paper go straight to AI
+    if(f.type === 'image/png'){
+      scanning = true;
+      try{ j = await readOnPhoneWithDeadline(lastPhoto); } finally { scanning = false; }
+    }
     if(!j || !j.balanced){
       try{ j = await readWithAi(lastPhoto); }
       catch(err){ if(!j?.items.length) throw err; }   // keep the phone result if AI is down
