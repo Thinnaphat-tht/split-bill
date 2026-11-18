@@ -100,6 +100,7 @@ class ReceiptParserTest {
 
         // Tesseract on Linux reads the wallet line differently
         r = ReceiptParser.parse("""
+                17:51 al ? 25
                 1 ถั่วเหลืองปกโแลคตา              20.00
                 1 แชนวิชคริวชองค์หมูห              32.00
                 ยอดสุทธิ    2 ชิ้น         52.00

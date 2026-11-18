@@ -17,6 +17,7 @@ public final class ReceiptParser {
     // must follow a space, so times (12:45), dates and IDs (TID#2611...) are not prices;
     // whole numbers without decimals are capped at 5 digits to skip receipt numbers
     private static final Pattern PRICE_AT_END = Pattern.compile("(?<=\\s)(-?\\d{1,3}(?:[,.]\\d{3})*[.,]\\d{1,2}|-?\\d{1,5})\\s*(?:฿|บาท|THB)?\\s*$");
+    private static final Pattern CLOCK = Pattern.compile("\\b\\d{1,2}:\\d{2}\\b");
     // quantity at the start: "2 ชาเย็น", "2x ชาเย็น", "2 X Thai Tea"
     private static final Pattern QTY_AT_START = Pattern.compile("^(\\d{1,2})\\s*[xX×]?\\s+(.+)$");
     // quantity after the name: "ชาเย็น x2"
@@ -56,7 +57,8 @@ public final class ReceiptParser {
             String l = label.toLowerCase(Locale.ROOT) + " ";
 
             // order matters: "total" must win over "subtotal" only when it is not a subtotal
-            if (has(l, IGNORE)) continue;
+            // a clock time means a header line, e.g. a phone status bar "17:51 ... 28" (battery %)
+            if (has(l, IGNORE) || CLOCK.matcher(label).find()) continue;
             if (has(l, DISCOUNT)) { discount += Math.abs(price); continue; }
             if (has(l, SERVICE)) { service += price; continue; }
             if (has(l, VAT)) { if (!vatIncluded) vat += price; continue; }

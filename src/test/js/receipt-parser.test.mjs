@@ -56,7 +56,8 @@ test('tolerates Tesseract mistakes on Thai', () => {
 });
 
 test('7-Eleven slip skips payment, id and time lines', () => {
-  const r = parseReceipt(`]]1/1]/69 | 12:45
+  const r = parseReceipt(`17:51 al ? 25
+]]1/1]/69 | 12:45
 เลขที่ใบเสร็จ                                                      1000104178
 รหัสร้าน : 19486
 1 ถ้วเหลืองปกโแลคตา              20.00

@@ -4,7 +4,8 @@
 // must follow a space, so times (12:45), dates and IDs are not prices;
 // whole numbers without decimals are capped at 5 digits to skip receipt numbers
 const PRICE_AT_END = /(?<=\s)(-?\d{1,3}(?:[,.]\d{3})*[.,]\d{1,2}|-?\d{1,5})\s*(?:฿|บาท|THB)?\s*$/;
-const QTY_AT_START = /^(\d{1,2})\s*[xX×]?\s+(.+)$/;
+const CLOCK = /\b\d{1,2}:\d{2}\b/;
+const QTY_AT_START =/^(\d{1,2})\s*[xX×]?\s+(.+)$/;
 // OCR may read the "x" as % or *
 const QTY_AFTER = /^(.+?)\s+[xX×@%*]\s*(\d{1,2})\b.*$/;
 
@@ -69,7 +70,8 @@ export function parseReceipt(text) {
     if (!label) continue;
     const l = label.toLowerCase() + ' ';
 
-    if (has(l, IGNORE)) continue;
+    // a clock time means a header line, e.g. a phone status bar "17:51 ... 28" (battery %)
+    if (has(l, IGNORE) || CLOCK.test(label)) continue;
     if (has(l, DISCOUNT)) { discount += Math.abs(price); continue; }
     if (has(l, SERVICE)) { service += price; continue; }
     if (has(l, VAT)) { if (!vatIncluded) vat += price; continue; }
