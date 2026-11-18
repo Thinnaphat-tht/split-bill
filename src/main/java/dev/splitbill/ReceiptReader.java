@@ -103,6 +103,8 @@ public class ReceiptReader {
     private static Receipt toReceipt(JsonNode r) {
         List<Receipt.Line> items = new java.util.ArrayList<>();
         for (JsonNode it : r.path("items")) {
+            // free lines such as bags or "0.00" promos are not something anyone has to pay for
+            if (it.path("price").asDouble(0) <= 0) continue;
             items.add(new Receipt.Line(it.path("name").asText(""), Math.max(it.path("qty").asInt(1), 1),
                     it.path("price").asDouble(0)));
         }
