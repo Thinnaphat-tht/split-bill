@@ -157,6 +157,17 @@ async function shrink(file){
   return new Promise(res => c.toBlob(res, 'image/jpeg', 0.9));
 }
 
+// screenshots are PNG on iOS and Android, but some apps re-save them as JPEG;
+// those still have exactly this phone's screen size in pixels
+async function looksLikeScreenshot(file){
+  if(file.type === 'image/png') return true;
+  try{
+    const b = await createImageBitmap(file), w = b.width, h = b.height; b.close?.();
+    const sw = Math.round(screen.width * devicePixelRatio), sh = Math.round(screen.height * devicePixelRatio);
+    return (w === sw && h === sh) || (w === sh && h === sw);
+  }catch{ return false; }
+}
+
 // Tesseract.js runs on the phone's own CPU, so the free server never has to do OCR
 let worker = null;
 // some in-app browsers (e.g. iOS web views) never finish loading the OCR worker and give no
@@ -245,8 +256,8 @@ const onPhoto = async e => {
   try{
     lastPhoto = await shrink(f);
     let j = null;
-    // phone OCR only copes with screenshots (saved as PNG); camera photos of paper go straight to AI
-    if(f.type === 'image/png'){
+    // phone OCR only copes with screenshots; camera photos of paper go straight to AI
+    if(await looksLikeScreenshot(f)){
       scanning = true;
       try{ j = await readOnPhoneWithDeadline(lastPhoto); } finally { scanning = false; }
     }
