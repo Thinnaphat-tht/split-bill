@@ -89,11 +89,6 @@ public class ApiController {
         return SplitCalculator.split(req);
     }
 
-    @GetMapping("/promptpay")
-    public Map<String, String> promptpay(@RequestParam String id, @RequestParam long satang) {
-        return Map.of("payload", PromptPay.payload(id, satang));
-    }
-
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ResponseEntity<Map<String, String>> badRequest(RuntimeException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

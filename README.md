@@ -30,7 +30,6 @@ The first version ran Tesseract on the server. On Render's free instance a singl
 - Java 21, Spring Boot 4
 - Tesseract.js in the browser; Tesseract via Tess4J on the server when language data is present (local runs)
 - Gemini API as fallback, trying several models when one is busy
-- PromptPay QR payload (EMVCo + CRC-16/CCITT) generated in Java
 - Plain HTML/CSS/JS front end, no framework
 - Docker, deployed on Render
 
@@ -39,9 +38,8 @@ The first version ran Tesseract on the server. On Render's free instance a singl
 | `static/js/receipt-parser.js` | Raw OCR text to items and totals in the browser |
 | `ReceiptParser.java` | Same parser on the server; both tolerate common Tesseract mistakes on Thai text |
 | `SplitCalculator.java` | Splits items and extras between people, exact to the satang |
-| `PromptPay.java` | Builds the PromptPay QR payload |
 | `OcrReader.java` / `ReceiptReader.java` | Server-side Tesseract and Gemini readers |
-| `ApiController.java` | `/api/scan`, `/api/split`, `/api/promptpay` |
+| `ApiController.java` | `/api/scan`, `/api/split` |
 
 ## Run locally
 
