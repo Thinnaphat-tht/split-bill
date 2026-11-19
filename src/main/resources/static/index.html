@@ -86,6 +86,8 @@ label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(
 <section id="resultBox" class="hidden">
   <h2>ต้องโอนคืน</h2>
   <div id="result"></div>
+  <button class="primary" id="copySummary" style="width:100%;margin-top:12px">📋 คัดลอกสรุป ไปวางในแชท</button>
+  <p class="muted" id="copyMsg"></p>
 </section>
 </main>
 
@@ -303,8 +305,34 @@ $('#calc').onclick = async () => {
       d.querySelector('.muted').textContent = lines;
       box.append(d);
     }
+    summaryText = buildSummary(j, payer);
+    $('#copyMsg').textContent = '';
     $('#resultBox').classList.remove('hidden'); $('#resultBox').scrollIntoView({behavior:'smooth'});
   }catch(err){ $('#calcMsg').textContent = err.message; }
+};
+
+// plain text, so it pastes the same into LINE, Messenger, Discord, IG or anything else
+let summaryText = '';
+function buildSummary(people, payer){
+  const total = people.reduce((s,p)=>s+p.total,0);
+  const payerName = people[payer]?.name ?? 'คนจ่าย';
+  const out = [`🧾 หารบิล รวม ${baht(total)} บาท`, `โอนให้ ${payerName}`, ''];
+  people.forEach((p,i)=>{
+    if(i===payer || p.total<=0) return;
+    out.push(`• ${p.name} ${baht(p.total)} บาท (${p.shares.map(s=>s.item).join(', ')})`);
+  });
+  if(people[payer]) out.push('', `${payerName} จ่ายไปแล้ว (ส่วนของตัวเอง ${baht(people[payer].total)} บาท)`);
+  return out.join('\n');
+}
+$('#copySummary').onclick = async () => {
+  try{ await navigator.clipboard.writeText(summaryText); }
+  catch{
+    // some in-app browsers block the clipboard API; fall back to a selected textarea
+    const t = document.createElement('textarea'); t.value = summaryText; document.body.append(t);
+    t.select(); const ok = document.execCommand('copy'); t.remove();
+    if(!ok){ $('#copyMsg').textContent = 'คัดลอกไม่ได้ในเบราว์เซอร์นี้'; return; }
+  }
+  $('#copyMsg').textContent = 'คัดลอกแล้ว ✓ วางในแชทกลุ่มได้เลย';
 };
 renderAll();
 </script>
