@@ -275,7 +275,9 @@ $('#gallery').onchange = onPhoto;
 function showReceipt(j){
     if(!j.items?.length){ $('#scanMsg').textContent = 'ไม่เจอรายการในรูป ลองถ่ายใหม่หรือเพิ่มเอง'; return; }
     state.items = j.items.map(x=>({name: (x.qty>1? x.qty+'x ':'')+x.name, price: toSatang(x.price), eaters:[]}));
-    const extra = (j.serviceCharge||0)+(j.vat||0)-(j.discount||0);
+    let extra = (j.serviceCharge||0)+(j.vat||0)-(j.discount||0);
+    // receipts round the total (e.g. "Rounding 0.91"); when it checks out, take the printed total as exact
+    if(j.balanced && j.total > 0) extra = j.total - j.items.reduce((s,x)=>s+x.price,0);
     $('#extra').value = extra.toFixed(2);
     const by = {ocr:'อ่านในมือถือด้วย Tesseract', gemini:'อ่านด้วย AI (Gemini)', 'ocr+gemini':'อ่านด้วย AI (Gemini)'}[j.source] || '';
     $('#receiptTotal').textContent = (j.total ? `ยอดในใบเสร็จ ${baht(toSatang(j.total))} บาท` + (j.balanced ? ' ตรงกับรายการ ✓' : ' — ยังไม่ตรง ให้แก้รายการที่อ่านผิด') : 'ไม่เจอยอดรวมในใบเสร็จ เช็กรายการอีกครั้ง') + (by ? ` · ${by}` : '');
