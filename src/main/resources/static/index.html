@@ -99,6 +99,7 @@ label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(
 
 <script type="module">
 import { parseReceipt } from './js/receipt-parser.js';
+import { prepareReceipt, binarize, textSkew, rotate } from './js/receipt-prep.js';
 const $ = s => document.querySelector(s);
 const store = { get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}} };
 const state = { people: [], items: [] };
@@ -241,6 +242,23 @@ async function readWithAi(blob){
   }
 }
 
+// camera photos: cut the paper out of the scene, straighten it and make it black and white
+// before phone OCR; null when no paper is found
+async function cleanPhoto(blob){
+  const img = await createImageBitmap(blob);
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const p = prepareReceipt(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+  if(!p) return null;
+  const skew = textSkew(binarize(p.gray, p.w, p.h), p.w, p.h);
+  const bin = binarize(skew ? rotate(p.gray, p.w, p.h, skew) : p.gray, p.w, p.h);
+  c.width = p.w; c.height = p.h;
+  const out = ctx.createImageData(p.w, p.h);
+  for(let i = 0; i < bin.length; i++){ out.data[4*i] = out.data[4*i+1] = out.data[4*i+2] = bin[i]; out.data[4*i+3] = 255; }
+  ctx.putImageData(out, 0, 0);
+  return new Promise(res => c.toBlob(res, 'image/png'));
+}
+
 let lastPhoto = null;
 function showRetry(text){ $('#aiRetry').textContent = text; $('#aiRetry').classList.remove('hidden'); }
 function scanFailed(err){
@@ -264,11 +282,16 @@ const onPhoto = async e => {
   try{
     lastPhoto = await shrink(f);
     let j = null;
-    // phone OCR only copes with screenshots; camera photos of paper go straight to AI
-    if(await looksLikeScreenshot(f)){
-      scanning = true;
-      try{ j = await readOnPhoneWithDeadline(lastPhoto); } finally { scanning = false; }
-    }
+    // phone first to save AI calls: screenshots as they are, camera photos after cleanup
+    const screenshot = await looksLikeScreenshot(f);
+    scanning = true;
+    try{
+      const img = screenshot ? lastPhoto
+        : await cleanPhoto(lastPhoto).catch(err => { console.warn('photo cleanup failed', err); return null; });
+      if(img) j = await readOnPhoneWithDeadline(img);
+    } finally { scanning = false; }
+    // a photo that doesn't add up is mostly misread noise, so it is never shown in place of AI
+    if(!screenshot && !j?.balanced) j = null;
     if(!j || !j.balanced){
       try{ j = await readWithAi(lastPhoto); }
       catch(err){ if(!j?.items.length) throw err; }   // keep the phone result if AI is down
