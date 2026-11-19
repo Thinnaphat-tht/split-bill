@@ -22,18 +22,15 @@ Built for the usual situation in Thailand: one friend pays for the whole table, 
 
 The phone always tries first, so AI is only called when it has to be.
 
-| Image | First try | When that fails |
-|---|---|---|
-| Screenshot (app slip, delivery order) | Tesseract.js on the phone, as is | Gemini |
-| Camera photo of paper | Cleaned up, then Tesseract.js on the phone | Gemini |
+Every image is cleaned up and read by Tesseract.js on the phone first. Gemini reads it only when the phone's items do not add up to the printed total.
 
-A phone result is trusted only when its items add up to the printed total. A photo that does not add up is never shown, because a half-read photo is mostly noise.
+A phone result is trusted only when it adds up. For a screenshot that does not add up, the phone result is kept as a fallback in case AI is down. For a camera photo it is dropped, because a half-read photo is mostly noise.
 
 Screenshots are detected by file type (PNG) or by the image matching the phone's screen size exactly. If Gemini is busy, the page waits a moment and retries once, then offers a button to try again.
 
 ### Cleaning up a photo before OCR
 
-Tesseract expects a flat page of text. A phone photo has a table, a hand and a tilted receipt. `receipt-prep.js` fixes that on the phone, in plain JavaScript:
+Tesseract expects a flat page of text. A phone photo has a table, a hand and a tilted receipt; a screenshot has a status bar and app buttons. `receipt-prep.js` fixes that on the phone, in plain JavaScript:
 
 1. Find the receipt: the largest region that is bright and colourless (white paper, not skin or wood).
 2. Cut it out along its own axes, blank everything around it, and scale it to a fixed width.
@@ -55,6 +52,8 @@ Six hand-held photos of paper receipts from Thai restaurants and shops:
 | Gemini | correct | 6 / 6 |
 
 Cleanup turns noise into mostly readable text, but one wrong digit (415 read as 416) is enough to fail the check, so on these photos Gemini still did the final read. Clear, flat photos are the ones the phone can finish on its own.
+
+Screenshots gain too. A 7-Eleven app screenshot (12 items, a discount, total 471) failed the check when read as is, because the status bar and app header were read as items. After cleanup it added up, with no AI call.
 
 ### Why OCR runs in the browser
 
