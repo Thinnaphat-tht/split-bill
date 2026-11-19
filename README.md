@@ -20,12 +20,27 @@ Built for the usual situation in Thailand: one friend pays for the whole table, 
 
 ## How it reads a receipt
 
-| Image | Read by | Why |
+The phone always tries first, so AI is only called when it has to be.
+
+| Image | First try | When that fails |
 |---|---|---|
-| Screenshot (app slip, delivery order) | Tesseract.js on the phone | Clean pixels, read in a few seconds with no server call |
-| Camera photo of paper | Gemini on the server | Folds, shadows and angles defeat Tesseract |
+| Screenshot (app slip, delivery order) | Tesseract.js on the phone, as is | Gemini |
+| Camera photo of paper | Cleaned up, then Tesseract.js on the phone | Gemini |
+
+A phone result is trusted only when its items add up to the printed total. A photo that does not add up is never shown, because a half-read photo is mostly noise.
 
 Screenshots are detected by file type (PNG) or by the image matching the phone's screen size exactly. If Gemini is busy, the page waits a moment and retries once, then offers a button to try again.
+
+### Cleaning up a photo before OCR
+
+Tesseract expects a flat page of text. A phone photo has a table, a hand and a tilted receipt. `receipt-prep.js` fixes that on the phone, in plain JavaScript:
+
+1. Find the receipt: the largest region that is bright and colourless (white paper, not skin or wood).
+2. Cut it out along its own axes, blank everything around it, and scale it to a fixed width.
+3. Straighten the text: try angles up to ±20° and keep the one where the text lines line up best.
+4. Black and white with an adaptive threshold, so shadows across the paper do not hide text.
+
+This takes under a second.
 
 When phone OCR gets the prices right but garbles Thai names, a button lets the user ask AI to re-read the same image.
 
@@ -33,12 +48,13 @@ When phone OCR gets the prices right but garbles Thai names, a button lets the u
 
 Six hand-held photos of paper receipts from Thai restaurants and shops:
 
-| Reader | Receipts read correctly |
-|---|---|
-| Tesseract.js on the phone | 0 / 6 |
-| Gemini | 6 / 6 |
+| Reader | Text quality | Items add up to the total |
+|---|---|---|
+| Tesseract.js, raw photo | noise | 0 / 6 |
+| Tesseract.js, cleaned-up photo | most item lines readable on 2 receipts | 0 / 6 |
+| Gemini | correct | 6 / 6 |
 
-That result is why photos skip phone OCR and go straight to AI.
+Cleanup turns noise into mostly readable text, but one wrong digit (415 read as 416) is enough to fail the check, so on these photos Gemini still did the final read. Clear, flat photos are the ones the phone can finish on its own.
 
 ### Why OCR runs in the browser
 
@@ -85,6 +101,7 @@ The tests check this bill by hand, and 5,000 random bills for two rules: the sha
 | File | What it does |
 |---|---|
 | `static/index.html` | The whole front end: photo routing, item editor, results, copy summary |
+| `static/js/receipt-prep.js` | Photo cleanup before phone OCR: find, cut out, straighten and binarize the receipt |
 | `static/js/receipt-parser.js` | Raw OCR text to items and totals in the browser |
 | `ReceiptParser.java` | Same parser on the server; both tolerate common Tesseract mistakes on Thai text |
 | `SplitCalculator.java` | Splits items and extras between people, exact to the satang |
@@ -106,7 +123,7 @@ Tests:
 
 ```sh
 ./mvnw test                  # Java: parser and split math
-node --test src/test/js      # JavaScript parser
+node --test src/test/js      # JavaScript parser and photo cleanup
 ```
 
 Optional: to let the server run OCR too (for API clients that are not the web page), put Tesseract language data in `tessdata/`:
