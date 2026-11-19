@@ -202,12 +202,24 @@ async function readOnPhone(blob){
   return parseReceipt(data.text);
 }
 
-async function readWithAi(blob){
-  $('#scanMsg').textContent = 'ให้ AI ช่วยอ่าน...';
+async function askAi(blob){
   const fd = new FormData(); fd.append('image', blob, 'receipt.jpg');
   const r = await fetch('/api/scan?aiOnly=true',{method:'POST',body:fd}); const j = await r.json();
   if(!r.ok) throw new Error(j.error);
   return j;
+}
+async function readWithAi(blob){
+  $('#scanMsg').textContent = 'ให้ AI ช่วยอ่าน...';
+  const t0 = Date.now();
+  try{ return await askAi(blob); }
+  catch(err){
+    // busy models fail within seconds and often recover; a slow failure means timeouts, so don't double the wait
+    if(Date.now() - t0 > 15000) throw err;
+    $('#scanMsg').textContent = 'AI ไม่ว่าง รอแป๊บแล้วลองใหม่ให้...';
+    await new Promise(r => setTimeout(r, 3000));
+    $('#scanMsg').textContent = 'ให้ AI ช่วยอ่าน (รอบสอง)...';
+    return await askAi(blob);
+  }
 }
 
 let lastPhoto = null;
