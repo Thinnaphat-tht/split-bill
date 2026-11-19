@@ -38,6 +38,9 @@ input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:
 .person:first-child{border-top:0}
 .person .total{font-size:1.3rem;font-weight:700}
 .hidden{display:none}
+.tips{margin-top:10px}
+.tips summary{cursor:pointer;color:var(--muted);font-size:.9rem;padding:6px 0}
+.tips img{width:100%;height:auto;border-radius:10px;margin-top:6px}
 .pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(--line);border-radius:12px;cursor:pointer}
 </style>
@@ -56,6 +59,9 @@ label.upload{display:block;text-align:center;padding:22px;border:2px dashed var(
     <label class="upload"><input id="camera" type="file" accept="image/*" capture="environment" class="hidden">📷 ถ่ายรูป</label>
     <label class="upload"><input id="gallery" type="file" accept="image/*" class="hidden">🖼️ เลือกจากคลัง</label>
   </div>
+  <details class="tips"><summary>ถ่ายยังไงให้อ่านแม่น</summary>
+    <img src="img/receipt-photo-tips.jpg" loading="lazy" width="1200" height="800" alt="ถ่ายใบเสร็จให้วางราบ แสงสว่าง เห็นครบทั้งใบ ไม่ยับ ไม่เบลอ ไม่โดนตัดยอดรวม">
+  </details>
   <p class="err" id="scanMsg"></p>
 </section>
 
