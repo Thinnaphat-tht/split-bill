@@ -242,7 +242,7 @@ async function readWithAi(blob){
   }
 }
 
-// camera photos: cut the paper out of the scene, straighten it and make it black and white
+// cut the receipt out of the picture, straighten it and make it black and white
 // before phone OCR; null when no paper is found
 async function cleanPhoto(blob){
   const img = await createImageBitmap(blob);
@@ -282,13 +282,12 @@ const onPhoto = async e => {
   try{
     lastPhoto = await shrink(f);
     let j = null;
-    // phone first to save AI calls: screenshots as they are, camera photos after cleanup
+    // phone first to save AI calls; cleanup helps screenshots too (drops the status bar and app chrome)
     const screenshot = await looksLikeScreenshot(f);
     scanning = true;
     try{
-      const img = screenshot ? lastPhoto
-        : await cleanPhoto(lastPhoto).catch(err => { console.warn('photo cleanup failed', err); return null; });
-      if(img) j = await readOnPhoneWithDeadline(img);
+      const img = await cleanPhoto(lastPhoto).catch(err => { console.warn('photo cleanup failed', err); return null; });
+      j = await readOnPhoneWithDeadline(img ?? lastPhoto);
     } finally { scanning = false; }
     // a photo that doesn't add up is mostly misread noise, so it is never shown in place of AI
     if(!screenshot && !j?.balanced) j = null;
