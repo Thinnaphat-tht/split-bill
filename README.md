@@ -4,37 +4,87 @@ Snap a photo of a restaurant receipt, tap who ate what, and get how much each fr
 
 Built for the usual situation in Thailand: one friend pays for the whole table, then has to work out and chase everyone's share by hand.
 
-**Live:** https://split-bill-pvv2.onrender.com (free instance, the first visit after a quiet spell takes about a minute to wake up)
+![Java 21](https://img.shields.io/badge/Java-21-orange) ![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4-6db33f) ![Tesseract.js](https://img.shields.io/badge/OCR-Tesseract.js-blue) ![Gemini](https://img.shields.io/badge/AI-Gemini-8e75ff) ![Render](https://img.shields.io/badge/deploy-Render-46e3b7)
 
-## How it works
+**Live:** https://split-bill-pvv2.onrender.com
+(free instance: the first visit after a quiet spell takes about a minute to wake up)
 
-1. **Read the receipt on the phone.** The page shrinks the photo and reads it with Tesseract.js (Thai + English) on the phone's own CPU. A parser turns the raw text into items, quantities, prices, service charge, VAT, discount and the printed total.
-2. **AI only when needed.** If the parsed items do not add up to the printed total, the photo goes to the server, which asks Gemini to read it. When OCR gets the prices right but garbles Thai names, a button lets the user ask AI to re-read.
-3. **Check the list.** Every item and price can be edited, and the page shows whether the list matches the receipt total.
-4. **Who ate what.** Add friends, then tap names under each item. Shared dishes are split evenly between the people tapped.
-5. **Pay back.** Service charge, VAT and discounts are shared in proportion to what each person ate. Each person sees their total and what it is made of.
+## Features
 
-All money is handled in satang (integers) with the largest-remainder method, so the shares always add up to the bill exactly.
+- **Read the receipt from a photo or a screenshot.** Items, quantities, prices, service charge, VAT, discount and the printed total.
+- **Check against the printed total.** The page says whether the items add up to the receipt, and every name and price can be edited.
+- **Tap who ate what.** Shared dishes are split evenly between the people tapped.
+- **Fair extras.** Service charge, VAT and discounts are shared in proportion to what each person ate.
+- **Exact to the satang.** The shares always add up to the bill, including the receipt's own rounding.
+- **Copy the summary.** One button copies a plain-text list of who owes how much, ready to paste into LINE, Messenger, Discord or any chat.
+
+## How it reads a receipt
+
+| Image | Read by | Why |
+|---|---|---|
+| Screenshot (app slip, delivery order) | Tesseract.js on the phone | Clean pixels, read in a few seconds with no server call |
+| Camera photo of paper | Gemini on the server | Folds, shadows and angles defeat Tesseract |
+
+Screenshots are detected by file type (PNG) or by the image matching the phone's screen size exactly. If Gemini is busy, the page waits a moment and retries once, then offers a button to try again.
+
+When phone OCR gets the prices right but garbles Thai names, a button lets the user ask AI to re-read the same image.
+
+### Tested on real receipts
+
+Six hand-held photos of paper receipts from Thai restaurants and shops:
+
+| Reader | Receipts read correctly |
+|---|---|
+| Tesseract.js on the phone | 0 / 6 |
+| Gemini | 6 / 6 |
+
+That result is why photos skip phone OCR and go straight to AI.
 
 ### Why OCR runs in the browser
 
-The first version ran Tesseract on the server. On Render's free instance a single photo took 2 to 4 minutes, and the leftover OCR work starved the Gemini call. A phone reads the same photo in a few seconds, so OCR moved to the browser and the server only does AI, splitting and QR codes.
+The first version ran Tesseract on the server. On Render's free instance a single photo took 2 to 4 minutes, and the leftover OCR work starved the Gemini call. A phone reads the same screenshot in a few seconds.
 
 | Receipt | Server OCR (Render free) | Browser OCR |
 |---|---|---|
 | 7-Eleven app slip | 202 s | 4 s (no AI needed) |
 | KFC paper receipt, hand-held photo | 252 s | 16 s (OCR fails, Gemini reads it) |
 
+## Taking a good photo
+
+![How to photograph your receipt](src/main/resources/static/img/receipt-photo-tips.jpg)
+
+The same guide is in the app under the photo buttons.
+
+## How the split is calculated
+
+All money is handled in satang (integers), never floating point.
+
+1. Each dish is divided evenly between the people who ate it. When it does not divide evenly, the leftover satang go to the people with the largest remainders (the largest-remainder method).
+2. The extras (service charge + VAT − discount) are divided in proportion to each person's food, again with the largest-remainder method.
+3. When the items match the printed total, the difference (for example "Rounding 0.91") is treated as part of the extras, so the result matches the receipt exactly.
+
+Example: A has fried rice 120, B has iced tea 90, all three share a hotpot 300. Service 10% and VAT 7% add 90.27.
+
+| Person | Food | Share of extras | Pays |
+|---|---|---|---|
+| A | 220.00 | 38.94 | 258.94 |
+| B | 190.00 | 33.63 | 223.63 |
+| C | 100.00 | 17.70 | 117.70 |
+| **Total** | 510.00 | 90.27 | **600.27** |
+
+The tests check this bill by hand, and 5,000 random bills for two rules: the shares always add up to the bill, and nobody is off from their exact share by more than a few satang.
+
 ## Tech
 
 - Java 21, Spring Boot 4
 - Tesseract.js in the browser; Tesseract via Tess4J on the server when language data is present (local runs)
-- Gemini API as fallback, trying several models when one is busy
+- Gemini API, trying several models when one is busy
 - Plain HTML/CSS/JS front end, no framework
 - Docker, deployed on Render
 
 | File | What it does |
 |---|---|
+| `static/index.html` | The whole front end: photo routing, item editor, results, copy summary |
 | `static/js/receipt-parser.js` | Raw OCR text to items and totals in the browser |
 | `ReceiptParser.java` | Same parser on the server; both tolerate common Tesseract mistakes on Thai text |
 | `SplitCalculator.java` | Splits items and extras between people, exact to the satang |
@@ -46,7 +96,7 @@ The first version ran Tesseract on the server. On Render's free instance a singl
 Requires JDK 21+.
 
 ```sh
-export GEMINI_API_KEY=your-key   # optional, only used when OCR is not enough
+export GEMINI_API_KEY=your-key   # needed for camera photos; screenshots work without it
 ./mvnw spring-boot:run
 ```
 
@@ -55,7 +105,7 @@ Open http://localhost:8080.
 Tests:
 
 ```sh
-./mvnw test                  # Java
+./mvnw test                  # Java: parser and split math
 node --test src/test/js      # JavaScript parser
 ```
 
@@ -67,7 +117,7 @@ curl -L -o tessdata/tha.traineddata https://github.com/tesseract-ocr/tessdata_be
 curl -L -o tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/eng.traineddata
 ```
 
-> Note: Maven fails to start if the project path contains non-ASCII characters (for example Thai folder names). Keep the project in an ASCII path.
+> Maven fails to start if the project path contains non-ASCII characters (for example Thai folder names). Keep the project in an ASCII path.
 
 ## Deploy
 
@@ -75,6 +125,7 @@ The repo includes a `Dockerfile` and `render.yaml`. On Render, create a new Blue
 
 ## Limitations
 
-- Tesseract reads prices reliably on clear receipts and screenshots, but Thai item names often come out with wrong vowels or tone marks. Names can be edited, or re-read with AI.
-- Crumpled or angled photos usually need Gemini.
-- The first scan on a phone downloads the Thai and English OCR data (a few MB), later scans use the browser cache.
+- Camera photos depend on Gemini's free tier. When every model is busy or out of quota, the page asks the user to try again later.
+- Tesseract reads prices reliably on screenshots, but Thai item names often come out with wrong vowels or tone marks. Names can be edited, or re-read with AI.
+- When a dish does not divide evenly, the leftover satang always land on the same people, so one friend may pay a few satang more.
+- The first scan on a phone downloads the Thai and English OCR data (a few MB); later scans use the browser cache.
