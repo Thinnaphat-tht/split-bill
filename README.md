@@ -145,3 +145,5 @@ The repo includes a `Dockerfile` and `render.yaml`. On Render, create a new Blue
 - Tesseract reads prices reliably on screenshots, but Thai item names often come out with wrong vowels or tone marks. Names can be edited, or re-read with AI.
 - When a dish does not divide evenly, the leftover satang always land on the same people, so one friend may pay a few satang more.
 - The first scan on a phone downloads the Thai and English OCR data (a few MB); later scans use the browser cache.
+
+BY Thinnaphat.
